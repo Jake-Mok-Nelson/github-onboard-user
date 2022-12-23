@@ -23,13 +23,13 @@ type Context struct {
 }
 
 var cli struct {
-	AddCollaborator AddCollaboratorCmd `cmd help:"Onboard a new Terraform collaborator."` // defined in addcollaborator.go
+	AddMember AddMemberCmd `cmd help:"Onboard a new member."` // defined in addcollaborator.go
 }
 
 func main() {
 	ctx := kong.Parse(&cli,
 		kong.Name("github-onboard-user"),
-		kong.Description("Add a customer/collaborator to an organisation and teams."),
+		kong.Description("Add a new user to an organisation and teams."),
 		kong.UsageOnError(),
 		kong.ConfigureHelp(kong.HelpOptions{
 			Compact: true,

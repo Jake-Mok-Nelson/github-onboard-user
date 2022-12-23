@@ -18,18 +18,18 @@ import (
 	"context"
 )
 
-type AddCollaboratorCmd struct {
+type AddMemberCmd struct {
 	Debug bool `help:"debugging output."`
 
 	GheUrl string `arg name:"url" help:"url to Github Enterprise"`
 	Token  string `arg name:"token" help:"token to authenticate to Github"`
 
-	CollaboratorEmailOrLanid string   `arg name:"user" help:"new collaborator's email or LANID"`
-	Organisation             string   `arg name:"org" help:"owner or organisation for the new member"`
-	Teams                    []string `arg name:"teams" help:"the teams to add the new member to"`
+	Member       string   `arg name:"user" help:"new member's info"`
+	Organisation string   `arg name:"org" help:"owner or organisation for the new member"`
+	Teams        []string `arg name:"teams" help:"the teams to add the new member to"`
 }
 
-func (r *AddCollaboratorCmd) Run() error {
+func (r *AddMemberCmd) Run() error {
 
 	// Auth with GHE
 	appAuth := AppAuthRequest{
@@ -43,11 +43,11 @@ func (r *AddCollaboratorCmd) Run() error {
 	}
 
 	// Request Merge
-	collabreq := AddCollaboratorRequest{
-		CollaboratorEmailOrLanid: r.CollaboratorEmailOrLanid,
-		Organisation:             r.Organisation,
-		Teams:                    r.Teams,
-		Debug:                    r.Debug,
+	collabreq := AddMemberRequest{
+		Member:       r.Member,
+		Organisation: r.Organisation,
+		Teams:        r.Teams,
+		Debug:        r.Debug,
 	}
 	err := collabreq.Do(context.TODO(), client)
 	if err != nil {

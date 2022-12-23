@@ -17,53 +17,49 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/google/go-github/v48/github"
 )
 
-// AddCollaboratorRequest contains configuration required to onboard a customer to a Github org and teams
-type AddCollaboratorRequest struct {
-	CollaboratorEmailOrLanid string   // The new user's Email address or LANID
-	Organisation             string   // The organisation to target
-	Teams                    []string // The teams to add the user to
-	Debug                    bool
+// AddMemberRequest contains configuration required to onboard a customer to a Github org and teams
+type AddMemberRequest struct {
+	Member       string   // The new user's info
+	Organisation string   // The organisation to target
+	Teams        []string // The teams to add the user to
+	Debug        bool
 }
 
-func (req AddCollaboratorRequest) Do(ctx context.Context, client *github.Client) error {
+func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error {
 
 	// Check if the user is already a member of the organisation
 	// If not, add the user to the organisation
-	membership, _, err := client.Organizations.GetOrgMembership(ctx, req.CollaboratorEmailOrLanid, req.Organisation)
-	log.Println(membership.GetState())
-	// isMember, _, err := client.Organizations.IsMember(ctx, req.Organisation, req.CollaboratorEmailOrLanid)
+	membership, _, err := client.Organizations.GetOrgMembership(ctx, req.Member, req.Organisation)
 	if err != nil {
 		return err
 	}
 
 	if membership == nil {
-		fmt.Printf("\nAdding %s to %s", req.CollaboratorEmailOrLanid, req.Organisation)
-		membershipResult, _, err := client.Organizations.EditOrgMembership(ctx, req.CollaboratorEmailOrLanid, req.Organisation, nil)
+		fmt.Printf("\nAdding %s to %s", req.Member, req.Organisation)
+		membershipResult, _, err := client.Organizations.EditOrgMembership(ctx, req.Member, req.Organisation, nil)
 
 		if err != nil {
 			return err
 		}
 		if membershipResult.GetState() != "active" {
-			return fmt.Errorf("Attempted to add the membership but the member state is not active for %v in organisation %v.", req.CollaboratorEmailOrLanid, req.Organisation)
+			return fmt.Errorf("Attempted to add the membership but the member state is not active for %v in organisation %v.", req.Member, req.Organisation)
 		}
 	}
-	fmt.Printf("%v is already a member of %v", req.CollaboratorEmailOrLanid, req.Organisation)
+	fmt.Printf("%v is already a member of %v", req.Member, req.Organisation)
 
-	// Check if the user is in all the teams
 	// For each team in req.Teams
 	for _, team := range req.Teams {
 		// Add the user to the team
-		_, _, err := client.Teams.AddTeamMembershipBySlug(ctx, req.Organisation, team, req.CollaboratorEmailOrLanid, nil)
+		_, _, err := client.Teams.AddTeamMembershipBySlug(ctx, req.Organisation, team, req.Member, nil)
 
 		if err != nil {
 			return err
 		}
-		fmt.Printf("\nAttempting AddTeamMembership for team %v", team)
+		fmt.Printf("\nAttempting add user for team %v", team)
 	}
 
 	return nil
