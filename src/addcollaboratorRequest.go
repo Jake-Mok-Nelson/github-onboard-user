@@ -39,10 +39,11 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 		fmt.Printf("\nResponse from Get Oragnization: %v", resp.Status)
 	}
 	if err != nil {
-		return fmt.Errorf("unable to read organisation %v", req.Organisation)
+		return fmt.Errorf("unable to read organisation %v, err: %v", req.Organisation, err)
 	}
-	if org.Name == nil {
-		return fmt.Errorf("unable to read organisation %v", req.Organisation)
+	n := org.GetName()
+	if n == "" {
+		return fmt.Errorf("unable to read organisation %v; no error was returned but the value is empty", req.Organisation)
 	} else {
 		targetOrg = *org.Name
 	}
