@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/google/go-github/v48/github"
 )
@@ -31,21 +32,91 @@ type AddMemberRequest struct {
 
 func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error {
 
-	// Check that we can access the organisation
-	_, _, err := client.Organizations.Get(ctx, req.Organisation)
+	// Get the organisation
+	org, resp, err := client.Organizations.Get(ctx, req.Organisation)
+	var targetOrg string
+	if resp != nil && req.Debug {
+		fmt.Printf("\nResponse from Get Oragnization: %v", resp)
+	}
 	if err != nil {
-		return fmt.Errorf("unable to access organisation %v", req.Organisation)
+		return fmt.Errorf("unable to read organisation %v", req.Organisation)
+	}
+	if org.Name == nil {
+		return fmt.Errorf("unable to read organisation %v", req.Organisation)
+	} else {
+		targetOrg = *org.Name
+	}
+
+	// Check if the user is in the org
+	_, resp, err = client.Organizations.GetOrgMembership(ctx, req.Member, targetOrg)
+	if resp != nil && req.Debug {
+		fmt.Printf("\nResponse from GetOrgMembership: %v", resp)
+	}
+
+	var notFound = false
+	if err != nil {
+		// Check for StatusNotModified or StatusNotFound
+		if resp.StatusCode != http.StatusNotModified && req.Debug {
+			fmt.Printf("\nGetOrgMembership StatusNotModified: %v", err)
+		}
+
+		if resp.StatusCode != http.StatusNotFound && req.Debug {
+			fmt.Printf("\nGetOrgMembership StatusNotFound: %v", err)
+			notFound = true
+		}
+
+		// If we didn't get a statusNotFound or statusNotModified, return the error
+		if !notFound {
+			return err
+		}
+	}
+
+	newMembership, resp, err := client.Organizations.EditOrgMembership(ctx, req.Member, targetOrg, &github.Membership{})
+	if resp != nil && req.Debug {
+		fmt.Printf("\nResponse from EditOrgMembership: %v", resp)
+	}
+	if err != nil {
+		return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
+	}
+
+	stateOfNewUser := newMembership.GetState()
+	if stateOfNewUser != "active" {
+		return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
 	}
 
 	// For each team in req.Teams
 	for _, team := range req.Teams {
-		// Add the user to the team
-		_, _, err := client.Teams.AddTeamMembershipBySlug(ctx, req.Organisation, team, req.Member, nil)
-
+		// Check that the team exists
+		teams, resp, err := client.Teams.GetTeamBySlug(ctx, req.Organisation, team)
+		if resp != nil && req.Debug {
+			fmt.Printf("\nResponse from GetTeamBySlug: %v", resp)
+		}
 		if err != nil {
+			return fmt.Errorf("unable to read team %v", team)
+		}
+		if req.Debug {
+			fmt.Printf("\nTeam %v found", teams.GetName())
+		}
+
+		// Add the user to the team
+		_, resp, err = client.Teams.AddTeamMembershipBySlug(ctx, req.Organisation, team, req.Member, nil)
+		if resp != nil && req.Debug {
+			fmt.Printf("\nResponse from AddTeamMembershipBySlug: %v", resp)
+		}
+		// Check for some known statuses and handle them
+		if err != nil {
+			if resp.StatusCode == http.StatusNotFound {
+				return fmt.Errorf("\nUnable to add user %v to team %v, err: %v", req.Member, team, err)
+			}
+			if resp.StatusCode == http.StatusNotModified {
+				fmt.Printf("\nUser %v already in team %v", req.Member, team)
+				continue
+			}
+
 			return err
 		}
-		fmt.Printf("\nAttempting add user for team %v", team)
+
+		fmt.Printf("\nUser %v added to team %v", req.Member, team)
 	}
 
 	return nil
