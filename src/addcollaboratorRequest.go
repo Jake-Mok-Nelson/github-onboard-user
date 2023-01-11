@@ -33,7 +33,7 @@ type AddMemberRequest struct {
 func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error {
 
 	// Get the organisation
-	org, resp, err := client.Organizations.Get(ctx, req.Organisation)
+	_, resp, err := client.Organizations.Get(ctx, req.Organisation)
 	var targetOrg string
 	if resp != nil && req.Debug {
 		fmt.Printf("\nResponse from Get Oragnization: %v", resp.Status)
@@ -41,15 +41,9 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 	if err != nil {
 		return fmt.Errorf("unable to read organisation %v, err: %v", req.Organisation, err)
 	}
-	n := org.GetName()
-	if n == "" {
-		return fmt.Errorf("unable to read organisation %v; no error was returned but the value is empty", req.Organisation)
-	} else {
-		targetOrg = *org.Name
-	}
 
 	// Check if the user is in the org
-	_, resp, err = client.Organizations.GetOrgMembership(ctx, req.Member, targetOrg)
+	_, resp, err = client.Organizations.GetOrgMembership(ctx, req.Member, req.Organisation)
 	if resp != nil && req.Debug {
 		fmt.Printf("\nResponse from GetOrgMembership: %v", resp.Status)
 	}
