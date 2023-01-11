@@ -36,7 +36,8 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 	org, resp, err := client.Organizations.Get(ctx, req.Organisation)
 	var targetOrg string
 	if resp != nil && req.Debug {
-		fmt.Printf("\nResponse from Get Oragnization: %v", resp)
+		b := readResponseBody(resp.Response)
+		fmt.Printf("\nResponse from Get Oragnization: %v", b)
 	}
 	if err != nil {
 		return fmt.Errorf("unable to read organisation %v", req.Organisation)
@@ -50,7 +51,8 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 	// Check if the user is in the org
 	_, resp, err = client.Organizations.GetOrgMembership(ctx, req.Member, targetOrg)
 	if resp != nil && req.Debug {
-		fmt.Printf("\nResponse from GetOrgMembership: %v", resp)
+		b := readResponseBody(resp.Response)
+		fmt.Printf("\nResponse from GetOrgMembership: %v", b)
 	}
 
 	var notFound = false
@@ -73,7 +75,8 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 
 	newMembership, resp, err := client.Organizations.EditOrgMembership(ctx, req.Member, targetOrg, &github.Membership{})
 	if resp != nil && req.Debug {
-		fmt.Printf("\nResponse from EditOrgMembership: %v", resp)
+		b := readResponseBody(resp.Response)
+		fmt.Printf("\nResponse from EditOrgMembership: %v", b)
 	}
 	if err != nil {
 		return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
@@ -89,7 +92,8 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 		// Check that the team exists
 		teams, resp, err := client.Teams.GetTeamBySlug(ctx, req.Organisation, team)
 		if resp != nil && req.Debug {
-			fmt.Printf("\nResponse from GetTeamBySlug: %v", resp)
+			b := readResponseBody(resp.Response)
+			fmt.Printf("\nResponse from GetTeamBySlug: %v", b)
 		}
 		if err != nil {
 			return fmt.Errorf("unable to read team %v", team)
@@ -101,7 +105,8 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 		// Add the user to the team
 		_, resp, err = client.Teams.AddTeamMembershipBySlug(ctx, req.Organisation, team, req.Member, nil)
 		if resp != nil && req.Debug {
-			fmt.Printf("\nResponse from AddTeamMembershipBySlug: %v", resp)
+			b := readResponseBody(resp.Response)
+			fmt.Printf("\nResponse from AddTeamMembershipBySlug: %v", b)
 		}
 		// Check for some known statuses and handle them
 		if err != nil {
