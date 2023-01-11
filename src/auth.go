@@ -16,6 +16,9 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"net/http"
+	"time"
 
 	"github.com/google/go-github/v48/github"
 	"golang.org/x/oauth2"
@@ -24,16 +27,29 @@ import (
 type AppAuthRequest struct {
 	GheUrl string // Github Enterprise URL
 	Token  string
+
+	TlsConfig struct {
+		HandshakeTimeout   int    `help:"Timeout in seconds" default:"10" env:"GHTOKEN_TIMEOUT"`
+		InsecureSkipVerify bool   `help:"Allow insecure connections" default:"false" env:"GHTOKEN_INSECURE_SKIP_VERIFY"`
+		Proxy              string `help:"Proxy URL" default:"" env:"GHTOKEN_PROXY"`
+	} `embed:"" prefix:"tlsconfig."`
 }
 
 func (config AppAuthRequest) Do() (*github.Client, error) {
 	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
+	tokenSource := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: config.Token},
 	)
-	tc := oauth2.NewClient(ctx, ts)
+	httpClient := oauth2.NewClient(ctx, tokenSource)
 
-	client, err := github.NewEnterpriseClient(config.GheUrl, config.GheUrl, tc)
+	httpClient.Timeout = time.Duration(config.TlsConfig.HandshakeTimeout) * time.Second
+	httpClient.Transport = &http.Transport{
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: config.TlsConfig.InsecureSkipVerify},
+		Proxy:               http.ProxyFromEnvironment,
+		TLSHandshakeTimeout: time.Duration(config.TlsConfig.HandshakeTimeout) * time.Second,
+	}
+
+	client, err := github.NewEnterpriseClient(config.GheUrl, config.GheUrl, httpClient)
 	if err != nil {
 		return nil, err
 	}

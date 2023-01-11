@@ -27,14 +27,21 @@ type AddMemberCmd struct {
 	Member       string   `arg name:"user" help:"new member's info"`
 	Organisation string   `arg name:"org" help:"owner or organisation for the new member"`
 	Teams        []string `arg name:"teams" help:"the teams to add the new member to"`
+
+	TlsConfig struct {
+		HandshakeTimeout   int    `help:"Timeout in seconds" default:"10" env:"GHTOKEN_TIMEOUT"`
+		InsecureSkipVerify bool   `help:"Allow insecure connections" default:"false" env:"GHTOKEN_INSECURE_SKIP_VERIFY"`
+		Proxy              string `help:"Proxy URL" default:"" env:"GHTOKEN_PROXY"`
+	} `embed:"" prefix:"tlsconfig."`
 }
 
 func (r *AddMemberCmd) Run() error {
 
 	// Auth with GHE
 	appAuth := AppAuthRequest{
-		GheUrl: r.GheUrl,
-		Token:  r.Token,
+		GheUrl:    r.GheUrl,
+		Token:     r.Token,
+		TlsConfig: r.TlsConfig,
 	}
 
 	client, appAuthErr := appAuth.Do()
