@@ -33,6 +33,9 @@ type AddMemberRequest struct {
 func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error {
 
 	// Get the organisation
+	if req.Debug {
+		fmt.Printf("\nGetting organisation %v", req.Organisation)
+	}
 	_, resp, err := client.Organizations.Get(ctx, req.Organisation)
 	var targetOrg string
 	if resp != nil && req.Debug {
@@ -43,43 +46,46 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 	}
 
 	// Check if the user is in the org
+	if req.Debug {
+		fmt.Printf("\nChecking if %v is a member of %v", req.Member, req.Organisation)
+	}
 	_, resp, err = client.Organizations.GetOrgMembership(ctx, req.Member, req.Organisation)
 	if resp != nil && req.Debug {
 		fmt.Printf("\nResponse from GetOrgMembership: %v", resp.Status)
 	}
 
-	var notFound = false
+	// If getOrgContinue is true, we'll continue to add the user to the org
+	var getOrgContinue bool
 	if err != nil {
 		// Check for StatusNotModified or StatusNotFound
 		if resp.StatusCode != http.StatusNotModified && req.Debug {
-			fmt.Printf("\nGetOrgMembership StatusNotModified: %v", err)
+			fmt.Printf("\nGetOrgMembership returned StatusNotModified, this probably means no change is required")
 		}
 
 		if resp.StatusCode != http.StatusNotFound && req.Debug {
 			fmt.Printf("\nGetOrgMembership StatusNotFound: %v", err)
-			notFound = true
-		}
-
-		// If we didn't get a statusNotFound or statusNotModified, return the error
-		if !notFound {
-			return err
+			getOrgContinue = true
 		}
 	}
 
-	newMembership, resp, err := client.Organizations.EditOrgMembership(ctx, req.Member, targetOrg, &github.Membership{})
-	if resp != nil && req.Debug {
-		fmt.Printf("\nResponse from EditOrgMembership: %v", resp.Status)
-	}
-	if err != nil {
-		return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
+	// If the user is not in the org, add them
+	if getOrgContinue {
+		newMembership, resp, err := client.Organizations.EditOrgMembership(ctx, req.Member, targetOrg, &github.Membership{})
+		if resp != nil && req.Debug {
+			fmt.Printf("\nResponse from EditOrgMembership: %v", resp.Status)
+		}
+		if err != nil {
+			return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
+		}
+
+		stateOfNewUser := newMembership.GetState()
+		if stateOfNewUser != "active" {
+			return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
+		}
 	}
 
-	stateOfNewUser := newMembership.GetState()
-	if stateOfNewUser != "active" {
-		return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
-	}
-
-	// For each team in req.Teams
+	// If we reach here, we should be a member of the organisation
+	// Attempt to add the user to each of the teams provided
 	for _, team := range req.Teams {
 		// Check that the team exists
 		teams, resp, err := client.Teams.GetTeamBySlug(ctx, req.Organisation, team)
