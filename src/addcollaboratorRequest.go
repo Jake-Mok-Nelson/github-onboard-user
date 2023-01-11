@@ -37,27 +37,6 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 		return fmt.Errorf("unable to access organisation %v", req.Organisation)
 	}
 
-	client.Users.Get(ctx, req.Member)
-
-	// Check if the user is already a member of the organisation
-	membership, _, err := client.Organizations.GetOrgMembership(ctx, req.Member, req.Organisation)
-	if err != nil {
-		return fmt.Errorf("unable to get membership for %v", req.Member)
-	}
-
-	if membership.GetState() == "active" {
-		return fmt.Errorf("%v is already a member of %v", req.Member, req.Organisation)
-	}
-
-	// Invite the user to the organisation
-	_, _, err = client.Organizations.CreateOrgInvitation(ctx, req.Organisation, &github.CreateOrgInvitationOptions{
-		InviteeID: github.Int64(*membership.User.ID),
-	})
-	if err != nil {
-		return fmt.Errorf("unable to invite %v to %v", req.Member, req.Organisation)
-	}
-	println("Invited user to organisation")
-
 	// For each team in req.Teams
 	for _, team := range req.Teams {
 		// Add the user to the team
