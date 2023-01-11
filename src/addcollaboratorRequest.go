@@ -34,12 +34,12 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 
 	// Get the organisation
 	if req.Debug {
-		fmt.Printf("\nGetting organisation %v", req.Organisation)
+		fmt.Printf("Getting organisation %v\n", req.Organisation)
 	}
 	_, resp, err := client.Organizations.Get(ctx, req.Organisation)
 	var targetOrg string
 	if resp != nil && req.Debug {
-		fmt.Printf("\nResponse from Get Oragnization: %v", resp.Status)
+		fmt.Printf("Response from Get Oragnization: %v\n", resp.Status)
 	}
 	if err != nil {
 		return fmt.Errorf("unable to read organisation %v, err: %v", req.Organisation, err)
@@ -47,11 +47,11 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 
 	// Check if the user is in the org
 	if req.Debug {
-		fmt.Printf("\nChecking if %v is a member of %v", req.Member, req.Organisation)
+		fmt.Printf("Checking if %v is a member of %v\n", req.Member, req.Organisation)
 	}
 	_, resp, err = client.Organizations.GetOrgMembership(ctx, req.Member, req.Organisation)
 	if resp != nil && req.Debug {
-		fmt.Printf("\nResponse from GetOrgMembership: %v", resp.Status)
+		fmt.Printf("Response from GetOrgMembership: %v\n", resp.Status)
 	}
 
 	// If getOrgContinue is true, we'll continue to add the user to the org
@@ -59,11 +59,11 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 	if err != nil {
 		// Check for StatusNotModified or StatusNotFound
 		if resp.StatusCode != http.StatusNotModified && req.Debug {
-			fmt.Printf("\nGetOrgMembership returned StatusNotModified, this probably means no change is required")
+			fmt.Printf("GetOrgMembership returned StatusNotModified, this probably means no change is required\n")
 		}
 
 		if resp.StatusCode != http.StatusNotFound && req.Debug {
-			fmt.Printf("\nGetOrgMembership StatusNotFound: %v", err)
+			fmt.Printf("GetOrgMembership StatusNotFound: %v\n", err)
 			getOrgContinue = true
 		}
 	}
@@ -72,7 +72,7 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 	if getOrgContinue {
 		newMembership, resp, err := client.Organizations.EditOrgMembership(ctx, req.Member, targetOrg, &github.Membership{})
 		if resp != nil && req.Debug {
-			fmt.Printf("\nResponse from EditOrgMembership: %v", resp.Status)
+			fmt.Printf("Response from EditOrgMembership: %v\n", resp.Status)
 		}
 		if err != nil {
 			return fmt.Errorf("unable to add user %v to organisation %v, err: %v", req.Member, req.Organisation, err)
@@ -90,34 +90,34 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 		// Check that the team exists
 		teams, resp, err := client.Teams.GetTeamBySlug(ctx, req.Organisation, team)
 		if resp != nil && req.Debug {
-			fmt.Printf("\nResponse from GetTeamBySlug: %v", resp.Status)
+			fmt.Printf("Response from GetTeamBySlug: %v\n", resp.Status)
 		}
 		if err != nil {
 			return fmt.Errorf("unable to read team %v", team)
 		}
 		if req.Debug {
-			fmt.Printf("\nTeam %v found", teams.GetName())
+			fmt.Printf("Team %v found\n", teams.GetName())
 		}
 
 		// Add the user to the team
 		_, resp, err = client.Teams.AddTeamMembershipBySlug(ctx, req.Organisation, team, req.Member, nil)
 		if resp != nil && req.Debug {
-			fmt.Printf("\nResponse from AddTeamMembershipBySlug: %v", resp.Status)
+			fmt.Printf("Response from AddTeamMembershipBySlug: %v\n", resp.Status)
 		}
 		// Check for some known statuses and handle them
 		if err != nil {
 			if resp.StatusCode == http.StatusNotFound {
-				return fmt.Errorf("\nUnable to add user %v to team %v, err: %v", req.Member, team, err)
+				return fmt.Errorf("unable to add user %v to team %v, err: %v", req.Member, team, err)
 			}
 			if resp.StatusCode == http.StatusNotModified {
-				fmt.Printf("\nUser %v already in team %v", req.Member, team)
+				fmt.Printf("User %v already in team %v\n", req.Member, team)
 				continue
 			}
 
 			return err
 		}
 
-		fmt.Printf("\nUser %v added to team %v", req.Member, team)
+		fmt.Printf("User %v added to team %v\n", req.Member, team)
 	}
 
 	return nil
