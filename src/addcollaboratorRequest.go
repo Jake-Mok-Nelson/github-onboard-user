@@ -87,16 +87,26 @@ func (req AddMemberRequest) Do(ctx context.Context, client *github.Client) error
 	// If we reach here, we should be a member of the organisation
 	// Attempt to add the user to each of the teams provided
 	for _, team := range req.Teams {
-		// Check that the team exists
-		teams, resp, err := client.Teams.GetTeamBySlug(ctx, req.Organisation, team)
+		// Check if they are in the team
+		_, resp, err := client.Teams.GetTeamMembershipBySlug(ctx, req.Organisation, team, req.Member)
 		if resp != nil && req.Debug {
 			fmt.Printf("Response from GetTeamBySlug: %v\n", resp.Status)
 		}
 		if err != nil {
+			if resp != nil {
+				if resp.StatusCode == http.StatusNotFound && req.Debug {
+					fmt.Printf("User %v not in team %v\n", req.Member, team)
+				}
+				if resp.StatusCode == http.StatusNotModified && req.Debug {
+					fmt.Printf("User %v already in team %v\n", req.Member, team)
+					continue
+				}
+			}
+			// return an error if it's not a 404 (if it's a 404, they aren't a member and we should add them)
+			if resp != nil && resp.StatusCode != http.StatusNotFound {
+				return fmt.Errorf("unable to read team %v, err: %v", team, err)
+			}
 			return fmt.Errorf("unable to read team %v", team)
-		}
-		if req.Debug {
-			fmt.Printf("Team %v found\n", teams.GetName())
 		}
 
 		// Add the user to the team
